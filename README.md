@@ -1,14 +1,36 @@
-# Практична робота №2 — Додаток «Список Бажань» (WishList)
+# Практична робота №2 — Додаток «Список Бажань» (WishList) + Системні сповіщення
 
-Повноцінний сучасний Android-додаток для планування та візуалізації списку бажань до найближчих свят (Новий рік, День народження тощо) із кастомною версткою карток, інтерактивною скарбничкою, перемиканням тем та збереженням у локальній реляційній базі даних **SQLite**.
+Повноцінний сучасний Android-додаток для планування та візуалізації списку бажань до найближчих свят (Новий рік, День народження тощо) із кастомною версткою карток, інтерактивною скарбничкою, перемиканням тем, збереженням у базі даних **SQLite** та модулем **системних сповіщень (NotificationChannel, NotificationCompat)**.
 
 ---
 
 ## 📱 Скріншоти додатку / Screenshots
 
-| 1. Головний екран (Темна тема) | 2. Картки бажань (Прокрутка) | 3. Додавання бажання в БД | 4. Світла тема + Новий пункт |
-|:---:|:---:|:---:|:---:|
-| <img src="screenshots/screen1_main.png" width="220" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="220" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="220" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="220" alt="Світла тема" /> |
+| 1. Головний екран (Темна тема) | 2. Картки бажань (Прокрутка) | 3. Додавання бажання в БД | 4. Світла тема + Новий пункт | 5. Системне сповіщення |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="screenshots/screen1_main.png" width="180" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="180" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="180" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="180" alt="Світла тема" /> | <img src="screenshots/screen_notification.png" width="180" alt="Системне сповіщення" /> |
+
+---
+
+## 🔔 Системні сповіщення (Практика №2)
+
+У додатку реалізовано повноцінний механізм відправки пуш-повідомлень у системну шторку Android із власним текстом та описом:
+
+1. **Дозвіл у Manifest та Runtime Permission**:
+   - У `AndroidManifest.xml` додано `<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />`.
+   - Для Android 13+ (API 33+) реалізовано динамічний запит дозволу через `rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission())`.
+2. **Канал сповіщень (`NotificationChannel`)**:
+   - Ідентифікатор: `wishlist_notifications_channel`.
+   - Назва: *«Сповіщення Списку Бажань»*.
+   - Рівень важливості: `NotificationManager.IMPORTANCE_HIGH`.
+3. **Формування сповіщення (`NotificationCompat.Builder`)**:
+   - Кастомний заголовок: *«Нагадування: Новий рік 2027 вже скоро!»*.
+   - Кастомний опис: *«У твоєму вішлісті 5 цілей. Головна мрія — NVIDIA GeForce RTX 5090 ($2,199). Накопичено: $1650.»*.
+   - Використання стилю `BigTextStyle()` для розгорнутого відображення опису.
+4. **Точки виклику**:
+   - 🔔 **Кнопка дзвіночка** у верхній панелі додатку (`WishlistTopBar`) для надсилання тестового нагадування.
+   - 💾 **Автоматичне сповіщення** під час успішного додавання нового бажання в базу даних SQLite.
+   - ✅ **Сповіщення про виконання мети** (*«Мрію здійснено! ✓»*).
 
 ---
 
@@ -71,8 +93,9 @@
 - **Мова програмування**: Kotlin 2.0+
 - **UI Framework**: Jetpack Compose (Declarative Reactive UI) & Material 3
 - **База даних**: SQLite (через `SQLiteOpenHelper`, `SQLiteDatabase`, `Cursor`, `ContentValues`)
+- **Сповіщення**: `NotificationManagerCompat`, `NotificationChannel`, `NotificationCompat`
 - **Завантаження зображень**: Coil 2.7.0 (`coil-compose`)
-- **Архітектура**: Single Activity, State Management via Compose Runtime (`remember`, `mutableStateListOf`, `mutableStateOf`)
+- **Архітектура**: Single Activity, State Management via Compose Runtime
 - **Цільова платформа**: Android SDK 33+ (compileSdk 37)
 
 ---

@@ -1,13 +1,22 @@
 package dev.project.app3
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -41,6 +50,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
 
 // ============================================================================
@@ -95,7 +107,7 @@ val LightWishPalette = WishPalette(
 )
 
 // ============================================================================
-// 2. ЛОКАЛЬНАЯ БАЗА ДАННЫХ SQLITE (SQLiteOpenHelper)
+// 2. ЛОКАЛЬНАЯ БАЗА ДАННЫХ SQLITE
 // ============================================================================
 
 class WishlistDbHelper(context: Context) :
@@ -150,14 +162,12 @@ class WishlistDbHelper(context: Context) :
         db.execSQL(createWishesSql)
         db.execSQL(createWalletSql)
 
-        // Начальный баланс копилки
         val walletValues = ContentValues().apply {
             put(COL_WALLET_ID, 1)
             put(COL_SAVED_USD, 1650)
         }
         db.insert(TABLE_WALLET, null, walletValues)
 
-        // Заполнение стартовых желаний
         seedDefaultWishes(db)
     }
 
@@ -334,7 +344,50 @@ class WishlistDbHelper(context: Context) :
 }
 
 // ============================================================================
-// 3. MAIN ACTIVITY И UI КОМПОНЕНТЫ
+// 3. СИСТЕМНЫЕ УВЕДОМЛЕНИЯ (ПРАКТИКА)
+// ============================================================================
+
+private const val WISH_CHANNEL_ID = "wishlist_notifications_channel"
+private var notificationCounter = 100
+
+fun createWishNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = NotificationChannel(
+            WISH_CHANNEL_ID,
+            "Сповіщення Списку Бажань",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Нагадування про цілі та свята з вішліста"
+        }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(channel)
+    }
+}
+
+@SuppressLint("MissingPermission")
+fun sendWishNotification(context: Context, title: String, description: String) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+        != PackageManager.PERMISSION_GRANTED
+    ) {
+        Toast.makeText(context, "Дозвольте сповіщення у налаштуваннях", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val notification = NotificationCompat.Builder(context, WISH_CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle(title)
+        .setContentText(description)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(description))
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setAutoCancel(true)
+        .build()
+
+    NotificationManagerCompat.from(context).notify(notificationCounter++, notification)
+}
+
+// ============================================================================
+// 4. MAIN ACTIVITY И UI КОМПОНЕНТЫ
 // ============================================================================
 
 class MainActivity : ComponentActivity() {
@@ -379,7 +432,28 @@ fun DreamWishlistScreen(
     val context = LocalContext.current
     val dbHelper = remember { WishlistDbHelper(context) }
 
-    // Состояние загружается напрямую из SQLite
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            sendWishNotification(
+                context = context,
+                title = "Список Бажань // Сповіщення увімкнено",
+                description = "Головна ціль до Нового року 2027 — NVIDIA GeForce RTX 5090 ($2,199)."
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        createWishNotificationChannel(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     val wishList = remember { mutableStateListOf<WishItem>().apply { addAll(dbHelper.getAllWishes()) } }
     var savedBudgetUsd by remember { mutableIntStateOf(dbHelper.getSavedUsd()) }
 
@@ -392,6 +466,17 @@ fun DreamWishlistScreen(
         wishList.clear()
         wishList.addAll(dbHelper.getAllWishes())
         savedBudgetUsd = dbHelper.getSavedUsd()
+    }
+
+    fun triggerNotification(title: String, description: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            sendWishNotification(context, title, description)
+        }
     }
 
     val filteredWishes = wishList.filter { item ->
@@ -413,6 +498,12 @@ fun DreamWishlistScreen(
                 palette = palette,
                 isDarkTheme = isDarkTheme,
                 onToggleTheme = onToggleTheme,
+                onSendTestNotification = {
+                    triggerNotification(
+                        title = "Нагадування: Новий рік 2027 вже скоро!",
+                        description = "У твоєму вішлісті ${wishList.size} цілей. Головна мрія — NVIDIA GeForce RTX 5090 ($2,199). Накопичено: $$savedBudgetUsd."
+                    )
+                },
                 onResetDb = {
                     dbHelper.resetDatabase()
                     reloadFromDb()
@@ -447,7 +538,6 @@ fun DreamWishlistScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 6.dp, bottom = 92.dp)
         ) {
-            // 1. Баннер ближайшего праздника
             item {
                 UpcomingHolidayBanner(
                     palette = palette,
@@ -456,7 +546,6 @@ fun DreamWishlistScreen(
                 )
             }
 
-            // 2. Карточка копилки (сохраняется в SQLite)
             item {
                 SavingsHeroCard(
                     palette = palette,
@@ -470,7 +559,6 @@ fun DreamWishlistScreen(
                 )
             }
 
-            // 3. Фильтры по праздникам
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(holidayTabs) { tab ->
@@ -497,7 +585,6 @@ fun DreamWishlistScreen(
                 }
             }
 
-            // 4. Кастомные карточки желаний (Изображение + Название + Описание + Стоимость)
             items(filteredWishes, key = { it.id }) { wish ->
                 EditorialWishCard(
                     wish = wish,
@@ -507,6 +594,12 @@ fun DreamWishlistScreen(
                         val newState = !wish.isFulfilled
                         dbHelper.updateFulfilled(wish.id, newState)
                         reloadFromDb()
+                        if (newState) {
+                            triggerNotification(
+                                title = "Мрію здійснено! ✓",
+                                description = "Ти виконав ціль: ${wish.title} (${wish.priceLabel})."
+                            )
+                        }
                     },
                     onOpenDetails = { selectedWishForDialog = wish }
                 )
@@ -514,7 +607,6 @@ fun DreamWishlistScreen(
         }
     }
 
-    // Модальное окно просмотра и удаления записи из SQLite
     selectedWishForDialog?.let { wish ->
         AlertDialog(
             onDismissRequest = { selectedWishForDialog = null },
@@ -581,8 +673,15 @@ fun DreamWishlistScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        dbHelper.updateFulfilled(wish.id, !wish.isFulfilled)
+                        val newState = !wish.isFulfilled
+                        dbHelper.updateFulfilled(wish.id, newState)
                         reloadFromDb()
+                        if (newState) {
+                            triggerNotification(
+                                title = "Мрію здійснено! ✓",
+                                description = "Ти виконав ціль: ${wish.title} (${wish.priceLabel})."
+                            )
+                        }
                         selectedWishForDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = palette.success),
@@ -609,13 +708,16 @@ fun DreamWishlistScreen(
         )
     }
 
-    // Диалог добавления нового желания в SQLite
     if (showAddWishDialog) {
         NewWishDialog(
             palette = palette,
             onCreate = { newItem ->
                 dbHelper.insertWish(newItem)
                 reloadFromDb()
+                triggerNotification(
+                    title = "Нове бажання збережено в БД!",
+                    description = "${newItem.title} (${newItem.priceLabel}) — свято: ${newItem.holiday}."
+                )
                 showAddWishDialog = false
             },
             onDismiss = { showAddWishDialog = false }
@@ -628,6 +730,7 @@ fun WishlistTopBar(
     palette: WishPalette,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
+    onSendTestNotification: () -> Unit,
     onResetDb: () -> Unit,
     fulfilledCount: Int,
     totalCount: Int
@@ -648,12 +751,12 @@ fun WishlistTopBar(
                 Text(
                     text = "Список Бажань",
                     color = palette.textPrimary,
-                    fontSize = 23.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.5).sp
                 )
                 Text(
-                    text = "SQLite DB • Виконано $fulfilledCount з $totalCount",
+                    text = "SQLite • Виконано $fulfilledCount з $totalCount",
                     color = palette.textSecondary,
                     fontSize = 11.sp
                 )
@@ -661,9 +764,23 @@ fun WishlistTopBar(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                // Кнопка сброса демо-данных в SQLite
+                // Кнопка вызова системного уведомления
+                Surface(
+                    color = palette.surface,
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, palette.border),
+                    modifier = Modifier.clickable { onSendTestNotification() }
+                ) {
+                    Text(
+                        text = "🔔",
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                    )
+                }
+
+                // Кнопка сброса БД
                 Surface(
                     color = palette.surface,
                     shape = CircleShape,
@@ -689,9 +806,9 @@ fun WishlistTopBar(
                     Text(
                         text = if (isDarkTheme) "☀ Світла" else "☾ Темна",
                         color = palette.textPrimary,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
                     )
                 }
             }
@@ -893,7 +1010,6 @@ fun EditorialWishCard(
             .clickable { onOpenDetails() }
     ) {
         Column {
-            // 1. Изображение + Canvas-подложка
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -938,7 +1054,6 @@ fun EditorialWishCard(
                         )
                 )
 
-                // Тег бренда
                 Surface(
                     color = wish.brandColor,
                     shape = RoundedCornerShape(10.dp),
@@ -956,7 +1071,6 @@ fun EditorialWishCard(
                     )
                 }
 
-                // Метка праздника (справа сверху)
                 Surface(
                     color = Color.Black.copy(alpha = 0.65f),
                     shape = RoundedCornerShape(10.dp),
@@ -973,7 +1087,6 @@ fun EditorialWishCard(
                     )
                 }
 
-                // Стоимость внизу слева
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -1006,7 +1119,6 @@ fun EditorialWishCard(
                 }
             }
 
-            // 2. Название, описание, прогресс и кнопка
             Column(
                 modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1110,7 +1222,6 @@ fun NewWishDialog(
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var selectedHoliday by remember { mutableStateOf("Новий рік 2027") }
-    var selectedCategory by remember { mutableStateOf("Залізо") }
     var imageUrl by remember {
         mutableStateOf("https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80")
     }
@@ -1222,7 +1333,7 @@ fun NewWishDialog(
                             WishItem(
                                 title = title.trim(),
                                 brandTag = "CUSTOM • WISH",
-                                category = selectedCategory,
+                                category = "Залізо",
                                 holiday = selectedHoliday,
                                 priceUsd = parsedPrice,
                                 priceLabel = "$$parsedPrice",
