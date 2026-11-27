@@ -10,9 +10,20 @@
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="screenshots/screen1_main.png" width="180" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="180" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="180" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="180" alt="Світла тема" /> | <img src="screenshots/screen_notification.png" width="180" alt="Системне сповіщення" /> |
 
-| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) | 9. Кастомні шрифти (Toy Story + Google Fonts) |
-|:---:|:---:|:---:|:---:|
-| <img src="screenshots/screen_rate_1_think.png" width="180" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="180" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="180" alt="Діалог фідбеку" /> | <img src="screenshots/screen_fonts.png" width="180" alt="Два нових шрифти" /> |
+| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) | 9. Кастомні шрифти (Toy Story + Google Fonts) | 10. Прапор США (Canvas) |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="screenshots/screen_rate_1_think.png" width="160" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="160" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="160" alt="Діалог фідбеку" /> | <img src="screenshots/screen_fonts.png" width="160" alt="Два нових шрифти" /> | <img src="screenshots/screen_usa_flag.png" width="160" alt="Прапор США" /> |
+
+---
+
+## 🇺🇸 Графічні примітиви: Прапор США (Практика №3)
+
+У `UsaFlagCanvas` ([MainActivity.kt](app/src/main/java/dev/project/app3/MainActivity.kt)) прапор Сполучених Штатів Америки відмальовано **виключно графічними примітивами Compose `Canvas`** (`drawRect`, `drawPath`) — **без використання готових зображень та `drawBitmap`**:
+
+- **Пропорція полотнища**: офіційне співвідношення сторін `1.9 : 1` (`aspectRatio(1.9f)`).
+- **13 горизонтальних смуг** (7 червоних `#B22234` та 6 білих `#FFFFFF`) — через `drawRect`.
+- **Синій кантон** (`#3C3B6E`) шириною `0.40` від ширини прапора та висотою `7` смуг — через `drawRect`.
+- **50 білих п'ятикутних зірок** у 9 зміщених рядах (`6-5-6-5-6-5-6-5-6`) — кожна побудована математично (`cos` / `sin`) у `buildStarPath()` та відмальована через `drawPath`.
 
 ---
 

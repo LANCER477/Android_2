@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -615,6 +616,10 @@ fun DreamWishlistScreen(
                     newYearCount = wishList.count { it.holiday == "Новий рік 2027" },
                     onSelectHoliday = { selectedTab = "Новий рік 2027" }
                 )
+            }
+
+            item {
+                UsaFlagCard(palette = palette)
             }
 
             item {
@@ -1556,15 +1561,7 @@ fun CustomRatingBar(
                         val cy = size.height / 2f
                         val outerRadius = size.minDimension * 0.48f
                         val innerRadius = outerRadius * 0.44f
-                        val path = Path()
-                        for (i in 0 until 10) {
-                            val angleRad = (-90.0 + i * 36.0) * PI / 180.0
-                            val r = if (i % 2 == 0) outerRadius else innerRadius
-                            val x = cx + (r * cos(angleRad)).toFloat()
-                            val y = cy + (r * sin(angleRad)).toFloat()
-                            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        }
-                        path.close()
+                        val path = buildStarPath(cx, cy, outerRadius, innerRadius)
                         drawPath(path = path, color = starColor)
                     }
                 }
@@ -1880,4 +1877,145 @@ fun HighRatingPlayMarketDialog(
             }
         }
     )
+}
+
+// ============================================================================
+// 7. ГРАФІЧНІ ПРИМІТИВИ: ПРАПОР США (БЕЗ DRAWBITMAP І ГОТОВИХ ЗОБРАЖЕНЬ)
+// ============================================================================
+
+private fun buildStarPath(
+    cx: Float,
+    cy: Float,
+    outerRadius: Float,
+    innerRadius: Float
+): Path {
+    val path = Path()
+    for (i in 0 until 10) {
+        val angleRad = (-90.0 + i * 36.0) * PI / 180.0
+        val r = if (i % 2 == 0) outerRadius else innerRadius
+        val x = cx + (r * cos(angleRad)).toFloat()
+        val y = cy + (r * sin(angleRad)).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+@Composable
+fun UsaFlagCard(palette: WishPalette) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = palette.surface,
+        border = BorderStroke(1.dp, palette.border),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "ПРАКТИКА №3 • CANVAS ПРИМІТИВИ",
+                        color = Color(0xFF38BDF8),
+                        fontFamily = GoogleBodyFontFamily,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Прапор США",
+                        color = palette.textPrimary,
+                        fontFamily = ToyStoryFontFamily,
+                        fontSize = 20.sp
+                    )
+                }
+
+                Surface(
+                    color = palette.surfaceVariant,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, palette.border)
+                ) {
+                    Text(
+                        text = "13 смуг • 50 зірок",
+                        color = palette.textSecondary,
+                        fontFamily = GoogleBodyFontFamily,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            UsaFlagCanvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.9f)
+                    .clip(RoundedCornerShape(14.dp))
+            )
+
+            Text(
+                text = "Відмальовано виключно графічними примітивами Compose Canvas (drawRect та drawPath) без використання зображень і drawBitmap.",
+                color = palette.textSecondary,
+                fontFamily = GoogleBodyFontFamily,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun UsaFlagCanvas(modifier: Modifier = Modifier) {
+    val usaRed = Color(0xFFB22234)
+    val usaWhite = Color(0xFFFFFFFF)
+    val usaBlue = Color(0xFF3C3B6E)
+
+    Canvas(modifier = modifier) {
+        val stripeHeight = size.height / 13f
+
+        // 13 горизонтальних смуг (7 червоних, 6 білих) через drawRect
+        for (i in 0 until 13) {
+            drawRect(
+                color = if (i % 2 == 0) usaRed else usaWhite,
+                topLeft = Offset(0f, i * stripeHeight),
+                size = Size(size.width, stripeHeight + 0.5f)
+            )
+        }
+
+        // Синій кантон (прямокутник у верхньому лівому куті шириною 0.40 та висотою 7 смуг)
+        val cantonWidth = size.width * 0.40f
+        val cantonHeight = stripeHeight * 7f
+        drawRect(
+            color = usaBlue,
+            topLeft = Offset(0f, 0f),
+            size = Size(cantonWidth, cantonHeight)
+        )
+
+        // 50 білих п'ятикутних зірок (9 рядів: чергування 6 і 5 зірок) через drawPath
+        val rowStep = cantonHeight / 10f
+        val colStep = cantonWidth / 12f
+        val outerRadius = stripeHeight * 0.40f
+        val innerRadius = outerRadius * 0.382f
+
+        for (row in 0 until 9) {
+            val cy = (row + 1) * rowStep
+            val isSixStarRow = row % 2 == 0
+            val count = if (isSixStarRow) 6 else 5
+            val startCol = if (isSixStarRow) 1 else 2
+
+            for (col in 0 until count) {
+                val cx = (startCol + col * 2) * colStep
+                drawPath(
+                    path = buildStarPath(cx, cy, outerRadius, innerRadius),
+                    color = usaWhite
+                )
+            }
+        }
+    }
 }
