@@ -1904,69 +1904,17 @@ private fun buildStarPath(
 @Composable
 fun UsaFlagCard(palette: WishPalette) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = palette.surface,
         border = BorderStroke(1.dp, palette.border),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "ПРАКТИКА №3 • CANVAS ПРИМІТИВИ",
-                        color = Color(0xFF38BDF8),
-                        fontFamily = GoogleBodyFontFamily,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Прапор США",
-                        color = palette.textPrimary,
-                        fontFamily = ToyStoryFontFamily,
-                        fontSize = 20.sp
-                    )
-                }
-
-                Surface(
-                    color = palette.surfaceVariant,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, palette.border)
-                ) {
-                    Text(
-                        text = "13 смуг • 50 зірок",
-                        color = palette.textSecondary,
-                        fontFamily = GoogleBodyFontFamily,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            UsaFlagCanvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.9f)
-                    .clip(RoundedCornerShape(14.dp))
-            )
-
-            Text(
-                text = "Відмальовано виключно графічними примітивами Compose Canvas (drawRect та drawPath) без використання зображень і drawBitmap.",
-                color = palette.textSecondary,
-                fontFamily = GoogleBodyFontFamily,
-                fontSize = 11.sp,
-                lineHeight = 16.sp
-            )
-        }
+        UsaFlagCanvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.9f)
+                .clip(RoundedCornerShape(20.dp))
+        )
     }
 }
 
