@@ -563,6 +563,19 @@ fun DreamWishlistScreen(
     val totalDreamsCost = wishList.sumOf { it.priceUsd }
     val fulfilledCount = wishList.count { it.isFulfilled }
 
+    val drawingShapes = remember {
+        mutableStateListOf<DrawShape>().apply { addAll(createInitialTldrawShapes()) }
+    }
+    var isDrawingEditorOpen by remember { mutableStateOf(false) }
+
+    if (isDrawingEditorOpen) {
+        TldrawEditorScreen(
+            shapes = drawingShapes,
+            onBack = { isDrawingEditorOpen = false }
+        )
+        return
+    }
+
     Scaffold(
         containerColor = palette.background,
         topBar = {
@@ -619,7 +632,11 @@ fun DreamWishlistScreen(
             }
 
             item {
-                UsaFlagCard(palette = palette)
+                TldrawLauncherCard(
+                    palette = palette,
+                    shapes = drawingShapes,
+                    onOpenEditor = { isDrawingEditorOpen = true }
+                )
             }
 
             item {
@@ -1899,71 +1916,4 @@ private fun buildStarPath(
     }
     path.close()
     return path
-}
-
-@Composable
-fun UsaFlagCard(palette: WishPalette) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = palette.surface,
-        border = BorderStroke(1.dp, palette.border),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        UsaFlagCanvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.9f)
-                .clip(RoundedCornerShape(20.dp))
-        )
-    }
-}
-
-@Composable
-fun UsaFlagCanvas(modifier: Modifier = Modifier) {
-    val usaRed = Color(0xFFB22234)
-    val usaWhite = Color(0xFFFFFFFF)
-    val usaBlue = Color(0xFF3C3B6E)
-
-    Canvas(modifier = modifier) {
-        val stripeHeight = size.height / 13f
-
-        // 13 горизонтальних смуг (7 червоних, 6 білих) через drawRect
-        for (i in 0 until 13) {
-            drawRect(
-                color = if (i % 2 == 0) usaRed else usaWhite,
-                topLeft = Offset(0f, i * stripeHeight),
-                size = Size(size.width, stripeHeight + 0.5f)
-            )
-        }
-
-        // Синій кантон (прямокутник у верхньому лівому куті шириною 0.40 та висотою 7 смуг)
-        val cantonWidth = size.width * 0.40f
-        val cantonHeight = stripeHeight * 7f
-        drawRect(
-            color = usaBlue,
-            topLeft = Offset(0f, 0f),
-            size = Size(cantonWidth, cantonHeight)
-        )
-
-        // 50 білих п'ятикутних зірок (9 рядів: чергування 6 і 5 зірок) через drawPath
-        val rowStep = cantonHeight / 10f
-        val colStep = cantonWidth / 12f
-        val outerRadius = stripeHeight * 0.40f
-        val innerRadius = outerRadius * 0.382f
-
-        for (row in 0 until 9) {
-            val cy = (row + 1) * rowStep
-            val isSixStarRow = row % 2 == 0
-            val count = if (isSixStarRow) 6 else 5
-            val startCol = if (isSixStarRow) 1 else 2
-
-            for (col in 0 until count) {
-                val cx = (startCol + col * 2) * colStep
-                drawPath(
-                    path = buildStarPath(cx, cy, outerRadius, innerRadius),
-                    color = usaWhite
-                )
-            }
-        }
-    }
 }
