@@ -4,11 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -37,15 +40,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +60,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 // ============================================================================
 // 1. МОДЕЛЬ ДАННЫХ И ПАЛИТРЫ
@@ -387,12 +396,56 @@ fun sendWishNotification(context: Context, title: String, description: String) {
 }
 
 // ============================================================================
-// 4. MAIN ACTIVITY И UI КОМПОНЕНТЫ
+// 4. ПОДСЧЁТ ВХОДОВ И РЕЙТИНГ-ДИАЛОГ (ПРАКТИКА)
+// ============================================================================
+
+private const val LAUNCH_PREFS_NAME = "app_launch_prefs"
+private const val KEY_LAUNCH_COUNT = "launch_count"
+private const val KEY_RATE_COMPLETED = "rate_dialog_completed"
+
+enum class RateDialogStep {
+    NONE,
+    TELL_US_WHAT_YOU_THINK,
+    FEEDBACK_LOW_RATING,
+    PLAY_MARKET_HIGH_RATING
+}
+
+fun openFavoriteAppInPlayMarket(context: Context, packageName: String = "com.spotify.music") {
+    val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    try {
+        context.startActivity(marketIntent)
+    } catch (_: ActivityNotFoundException) {
+        val webIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(webIntent)
+    }
+}
+
+// ============================================================================
+// 5. MAIN ACTIVITY И UI КОМПОНЕНТЫ
 // ============================================================================
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Подсчет входов в приложение через SharedPreferences
+        val prefs = getSharedPreferences(LAUNCH_PREFS_NAME, Context.MODE_PRIVATE)
+        val launchCount = if (savedInstanceState == null) {
+            val nextCount = prefs.getInt(KEY_LAUNCH_COUNT, 0) + 1
+            prefs.edit().putInt(KEY_LAUNCH_COUNT, nextCount).apply()
+            nextCount
+        } else {
+            prefs.getInt(KEY_LAUNCH_COUNT, 1)
+        }
+        val shouldShowRateOnStart = launchCount >= 3 && !prefs.getBoolean(KEY_RATE_COMPLETED, false)
+
         enableEdgeToEdge()
         setContent {
             var isDarkTheme by remember { mutableStateOf(true) }
@@ -416,7 +469,12 @@ class MainActivity : ComponentActivity() {
                 DreamWishlistScreen(
                     palette = palette,
                     isDarkTheme = isDarkTheme,
-                    onToggleTheme = { isDarkTheme = !isDarkTheme }
+                    onToggleTheme = { isDarkTheme = !isDarkTheme },
+                    launchCount = launchCount,
+                    initialShowRateDialog = shouldShowRateOnStart,
+                    onMarkRateCompleted = {
+                        prefs.edit().putBoolean(KEY_RATE_COMPLETED, true).apply()
+                    }
                 )
             }
         }
@@ -427,7 +485,10 @@ class MainActivity : ComponentActivity() {
 fun DreamWishlistScreen(
     palette: WishPalette,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    launchCount: Int = 1,
+    initialShowRateDialog: Boolean = false,
+    onMarkRateCompleted: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dbHelper = remember { WishlistDbHelper(context) }
@@ -461,6 +522,12 @@ fun DreamWishlistScreen(
     var selectedTab by remember { mutableStateOf("Усі свята") }
     var selectedWishForDialog by remember { mutableStateOf<WishItem?>(null) }
     var showAddWishDialog by remember { mutableStateOf(false) }
+    var rateDialogStep by remember {
+        mutableStateOf(
+            if (initialShowRateDialog) RateDialogStep.TELL_US_WHAT_YOU_THINK else RateDialogStep.NONE
+        )
+    }
+    var selectedStarRating by remember { mutableIntStateOf(0) }
 
     fun reloadFromDb() {
         wishList.clear()
@@ -722,6 +789,64 @@ fun DreamWishlistScreen(
             },
             onDismiss = { showAddWishDialog = false }
         )
+    }
+
+    when (rateDialogStep) {
+        RateDialogStep.TELL_US_WHAT_YOU_THINK -> {
+            TellUsWhatYouThinkDialog(
+                palette = palette,
+                launchCount = launchCount,
+                rating = selectedStarRating,
+                onRatingChange = { selectedStarRating = it },
+                onSubmit = {
+                    if (selectedStarRating in 1..3) {
+                        rateDialogStep = RateDialogStep.FEEDBACK_LOW_RATING
+                    } else if (selectedStarRating >= 4) {
+                        rateDialogStep = RateDialogStep.PLAY_MARKET_HIGH_RATING
+                    }
+                },
+                onDismiss = { rateDialogStep = RateDialogStep.NONE }
+            )
+        }
+
+        RateDialogStep.FEEDBACK_LOW_RATING -> {
+            LowRatingFeedbackDialog(
+                palette = palette,
+                rating = selectedStarRating,
+                onSubmitFeedback = { feedbackText ->
+                    onMarkRateCompleted()
+                    rateDialogStep = RateDialogStep.NONE
+                    Toast.makeText(
+                        context,
+                        if (feedbackText.isNotBlank()) "Дякуємо за відгук! Ми врахуємо ваші зауваження."
+                        else "Дякуємо за оцінку!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDismiss = {
+                    onMarkRateCompleted()
+                    rateDialogStep = RateDialogStep.NONE
+                }
+            )
+        }
+
+        RateDialogStep.PLAY_MARKET_HIGH_RATING -> {
+            HighRatingPlayMarketDialog(
+                palette = palette,
+                rating = selectedStarRating,
+                onOpenPlayMarket = {
+                    onMarkRateCompleted()
+                    rateDialogStep = RateDialogStep.NONE
+                    openFavoriteAppInPlayMarket(context, "com.spotify.music")
+                },
+                onDismiss = {
+                    onMarkRateCompleted()
+                    rateDialogStep = RateDialogStep.NONE
+                }
+            )
+        }
+
+        RateDialogStep.NONE -> Unit
     }
 }
 
@@ -1357,6 +1482,389 @@ fun NewWishDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Скасувати", color = palette.textSecondary)
+            }
+        }
+    )
+}
+
+// ============================================================================
+// 6. КАСТОМНЫЙ РЕЙТИНГ-БАР И ДИАЛОГИ ОЦЕНКИ ("TELL US WHAT YOU THINK")
+// ============================================================================
+
+@Composable
+fun CustomRatingBar(
+    rating: Int,
+    palette: WishPalette,
+    onRatingSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeGold = Color(0xFFF59E0B)
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (star in 1..5) {
+            val isSelected = star <= rating
+            val starScale by animateFloatAsState(
+                targetValue = if (isSelected) 1.12f else 1f,
+                animationSpec = tween(200),
+                label = "starScale$star"
+            )
+            val containerBg by animateColorAsState(
+                targetValue = if (isSelected) activeGold.copy(alpha = 0.16f) else palette.surfaceVariant,
+                animationSpec = tween(200),
+                label = "starBg$star"
+            )
+            val borderCol by animateColorAsState(
+                targetValue = if (isSelected) activeGold else palette.border,
+                animationSpec = tween(200),
+                label = "starBorder$star"
+            )
+            val starColor by animateColorAsState(
+                targetValue = if (isSelected) activeGold else palette.textSecondary.copy(alpha = 0.45f),
+                animationSpec = tween(200),
+                label = "starFill$star"
+            )
+
+            Surface(
+                color = containerBg,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.2.dp, borderCol),
+                modifier = Modifier
+                    .size(46.dp)
+                    .scale(starScale)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { onRatingSelected(star) }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(24.dp)) {
+                        val cx = size.width / 2f
+                        val cy = size.height / 2f
+                        val outerRadius = size.minDimension * 0.48f
+                        val innerRadius = outerRadius * 0.44f
+                        val path = Path()
+                        for (i in 0 until 10) {
+                            val angleRad = (-90.0 + i * 36.0) * PI / 180.0
+                            val r = if (i % 2 == 0) outerRadius else innerRadius
+                            val x = cx + (r * cos(angleRad)).toFloat()
+                            val y = cy + (r * sin(angleRad)).toFloat()
+                            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                        }
+                        path.close()
+                        drawPath(path = path, color = starColor)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TellUsWhatYouThinkDialog(
+    palette: WishPalette,
+    launchCount: Int,
+    rating: Int,
+    onRatingChange: (Int) -> Unit,
+    onSubmit: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val ratingCaption = when (rating) {
+        1 -> "Дуже погано • 1/5"
+        2 -> "Можна краще • 2/5"
+        3 -> "Нормально • 3/5"
+        4 -> "Дуже добре • 4/5"
+        5 -> "Чудовий додаток! • 5/5"
+        else -> "Оберіть кількість зірок (1–5)"
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = palette.surface,
+        shape = RoundedCornerShape(26.dp),
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFFF59E0B).copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "ВХІД #$launchCount • ВАША ДУМКА",
+                        color = Color(0xFFF59E0B),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
+                Text(
+                    text = "Tell us what you think?",
+                    color = palette.textPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Ви вже втретє користуєтеся «Список Бажань». Оцініть, будь ласка, наскільки вам подобається додаток!",
+                    color = palette.textSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                CustomRatingBar(
+                    rating = rating,
+                    palette = palette,
+                    onRatingSelected = onRatingChange
+                )
+
+                Text(
+                    text = ratingCaption,
+                    color = if (rating > 0) Color(0xFFF59E0B) else palette.textSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSubmit,
+                enabled = rating > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = palette.primaryAccent,
+                    contentColor = palette.surface
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Продовжити", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Пізніше", color = palette.textSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun LowRatingFeedbackDialog(
+    palette: WishPalette,
+    rating: Int,
+    onSubmitFeedback: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var feedbackText by remember { mutableStateOf("") }
+    val quickTags = listOf("Дизайн", "Незручно", "Мало функцій", "Помилка")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = palette.surface,
+        shape = RoundedCornerShape(26.dp),
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(
+                    color = Color(0xFFE11D48).copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "ОЦІНКА $rating / 5 • ФІДБЕК",
+                        color = Color(0xFFE11D48),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+                Text(
+                    text = "Шкода, що щось не так",
+                    color = palette.textPrimary,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Чи не хотіли б ви написати, що саме не так? Ваші зауваження допоможуть нам покращити додаток.",
+                    color = palette.textSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(quickTags) { tag ->
+                        Surface(
+                            color = palette.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, palette.border),
+                            modifier = Modifier.clickable {
+                                feedbackText = if (feedbackText.isBlank()) tag else "$feedbackText, $tag"
+                            }
+                        ) {
+                            Text(
+                                text = "+ $tag",
+                                color = palette.textPrimary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = feedbackText,
+                    onValueChange = { feedbackText = it },
+                    placeholder = { Text("Напишіть, що саме не так...", fontSize = 12.sp) },
+                    minLines = 3,
+                    maxLines = 4,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmitFeedback(feedbackText.trim()) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE11D48),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Надіслати фідбек", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Скасувати", color = palette.textSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun HighRatingPlayMarketDialog(
+    palette: WishPalette,
+    rating: Int,
+    onOpenPlayMarket: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = palette.surface,
+        shape = RoundedCornerShape(26.dp),
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = palette.success.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "ОЦІНКА $rating / 5 ⭐",
+                        color = palette.success,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
+                Text(
+                    text = "Дякуємо за високу оцінку!",
+                    color = palette.textPrimary,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Ми раді, що вам подобається «Список Бажань»! Запрошуємо перейти в Google Play Market на сторінку нашого улюбленого додатку:",
+                    color = palette.textSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                Surface(
+                    color = palette.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, palette.border),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF1DB954),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "▶",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Spotify: Music & Podcasts",
+                                color = palette.textPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Google Play Market • Улюблений додаток",
+                                color = palette.success,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onOpenPlayMarket,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = palette.success,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Перейти в Play Market", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Не зараз", color = palette.textSecondary)
             }
         }
     )

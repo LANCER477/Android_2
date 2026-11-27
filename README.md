@@ -10,6 +10,25 @@
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="screenshots/screen1_main.png" width="180" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="180" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="180" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="180" alt="Світла тема" /> | <img src="screenshots/screen_notification.png" width="180" alt="Системне сповіщення" /> |
 
+| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) |
+|:---:|:---:|:---:|
+| <img src="screenshots/screen_rate_1_think.png" width="200" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="200" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="200" alt="Діалог фідбеку" /> |
+
+---
+
+## ⭐ Діалог оцінки «Tell us what you think?» (Практика №1)
+
+У додатку реалізовано сценарій зворотного зв'язку, який автоматично з'являється **після 3-го входу до програми**:
+
+1. **Підрахунок входів (`SharedPreferences`)**:
+   - У `MainActivity.onCreate()` за умови `savedInstanceState == null` інкрементується лічильник `launch_count` у `SharedPreferences` (`app_launch_prefs`).
+   - Коли `launchCount >= 3` і користувач ще не завершив оцінювання (`!rate_dialog_completed`), автоматично відкривається діалог оцінки.
+2. **Кастомний рейтинг-бар (`CustomRatingBar`)**:
+   - П'ять інтерактивних зірок намальовано вручну на `Canvas` через геометричний `Path` із плавною анімацією масштабу та золотого підсвічування.
+3. **Розгалуження логіки після вибору оцінки**:
+   - **1–3 зірки (діалог фідбеку / для «хейтерів»)**: показує `LowRatingFeedbackDialog` із питанням *«Чи не хотіли б ви написати, що саме не так?»*, швидкими тегами та полем для відгуку.
+   - **4–5 зірок (діалог для «фанатів»)**: показує `HighRatingPlayMarketDialog` із пропозицією перейти в Google Play Market на сторінку улюбленого додатку (*Spotify*, `market://details?id=com.spotify.music` із fallback на веб-URL).
+
 ---
 
 ## 🔔 Системні сповіщення (Практика №2)
