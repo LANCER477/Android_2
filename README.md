@@ -6,17 +6,9 @@
 
 ## 📱 Скріншоти додатку / Screenshots
 
-| 1. Головний екран (Темна тема) | 2. Картки бажань (Прокрутка) | 3. Додавання бажання в БД | 4. Світла тема + Новий пункт | 5. Системне сповіщення |
-|:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/screen1_main.png" width="180" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="180" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="180" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="180" alt="Світла тема" /> | <img src="screenshots/screen_notification.png" width="180" alt="Системне сповіщення" /> |
-
-| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) | 9. Кастомні шрифти (Toy Story + Google Fonts) |
-|:---:|:---:|:---:|:---:|
-| <img src="screenshots/screen_rate_1_think.png" width="180" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="180" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="180" alt="Діалог фідбеку" /> | <img src="screenshots/screen_fonts.png" width="180" alt="Два нових шрифти" /> |
-
-| 10. Прев'ю «Малювалка» на головному екрані | 11. Повноекранний редактор «Малювалка» (tldraw style) |
+| 1. Прев'ю «Малювалка» на головному екрані | 2. Повноекранний редактор «Малювалка» (tldraw style) |
 |:---:|:---:|
-| <img src="screenshots/screen_malyuvalka_card.png" width="220" alt="Прев'ю Малювалка" /> | <img src="screenshots/screen_malyuvalka_editor.png" width="220" alt="Редактор Малювалка tldraw" /> |
+| <img src="screenshots/screen_malyuvalka_card.png" width="260" alt="Прев'ю Малювалка" /> | <img src="screenshots/screen_malyuvalka_editor.png" width="260" alt="Редактор Малювалка tldraw" /> |
 
 ---
 
