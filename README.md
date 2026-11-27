@@ -10,9 +10,22 @@
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="screenshots/screen1_main.png" width="180" alt="Головний екран" /> | <img src="screenshots/screen2_cards.png" width="180" alt="Прокручений список" /> | <img src="screenshots/screen3_add_dialog.png" width="180" alt="Діалог додавання" /> | <img src="screenshots/screen4_light_theme.png" width="180" alt="Світла тема" /> | <img src="screenshots/screen_notification.png" width="180" alt="Системне сповіщення" /> |
 
-| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) |
-|:---:|:---:|:---:|
-| <img src="screenshots/screen_rate_1_think.png" width="200" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="200" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="200" alt="Діалог фідбеку" /> |
+| 6. «Tell us what you think?» (Вхід #3) | 7. Діалог для фанатів (4–5 зірок) | 8. Діалог фідбеку (1–3 зірки) | 9. Кастомні шрифти (Toy Story + Google Fonts) |
+|:---:|:---:|:---:|:---:|
+| <img src="screenshots/screen_rate_1_think.png" width="180" alt="Діалог оцінки" /> | <img src="screenshots/screen_rate_2_fans.png" width="180" alt="Діалог для фанатів" /> | <img src="screenshots/screen_rate_3_haters.png" width="180" alt="Діалог фідбеку" /> | <img src="screenshots/screen_fonts.png" width="180" alt="Два нових шрифти" /> |
+
+---
+
+## 🔤 Підключення шрифтів: Локальний + Google Fonts (Практика №2)
+
+У файлі [Type.kt](app/src/main/java/dev/project/app3/ui/theme/Type.kt) налаштовано типографіку з двох різних типів шрифтів, обидва з яких повністю підтримують українську кирилицю та латиницю:
+
+1. **Локальний шрифт у стилі «Історії іграшок» (`Rubik Bubbles`)**:
+   - Файл `app/src/main/res/font/toy_rubik_bubbles.ttf` підключено локально через `Font(R.font.toy_rubik_bubbles)`.
+   - Застосовано до головних заголовків та акцентних сум (`Список Бажань`, `Новий рік 2027`, `$1,650`, назви та ціни карток).
+2. **Шрифт із Google Fonts (`Comfortaa`)**:
+   - Підключено через бібліотеку `androidx.compose.ui:ui-text-google-fonts` із `GoogleFont.Provider` та сертифікатами `res/values/font_certs.xml`.
+   - Застосовано до описів, підзаголовків, чипів фільтрації, кнопок та індикаторів прогресу через `AppTypography` у `MaterialTheme`.
 
 ---
 

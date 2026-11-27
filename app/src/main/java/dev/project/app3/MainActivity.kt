@@ -60,6 +60,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
+import dev.project.app3.ui.theme.AppTypography
+import dev.project.app3.ui.theme.GoogleBodyFontFamily
+import dev.project.app3.ui.theme.ToyStoryFontFamily
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -464,7 +467,8 @@ class MainActivity : ComponentActivity() {
                         surface = palette.surface,
                         primary = palette.primaryAccent
                     )
-                }
+                },
+                typography = AppTypography
             ) {
                 DreamWishlistScreen(
                     palette = palette,
@@ -876,13 +880,14 @@ fun WishlistTopBar(
                 Text(
                     text = "Список Бажань",
                     color = palette.textPrimary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.5).sp
+                    fontFamily = ToyStoryFontFamily,
+                    fontSize = 23.sp,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "SQLite • Виконано $fulfilledCount з $totalCount",
                     color = palette.textSecondary,
+                    fontFamily = GoogleBodyFontFamily,
                     fontSize = 11.sp
                 )
             }
@@ -970,6 +975,7 @@ fun UpcomingHolidayBanner(
                 Text(
                     text = "НАЙБЛИЖЧЕ СВЯТО",
                     color = Color(0xFF38BDF8),
+                    fontFamily = GoogleBodyFontFamily,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -978,12 +984,13 @@ fun UpcomingHolidayBanner(
                 Text(
                     text = "Новий рік 2027",
                     color = Color.White,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.ExtraBold
+                    fontFamily = ToyStoryFontFamily,
+                    fontSize = 19.sp
                 )
                 Text(
                     text = "Заплановано бажань: $newYearCount • Залишилось 41 дн.",
                     color = Color(0xFFCBD5E1),
+                    fontFamily = GoogleBodyFontFamily,
                     fontSize = 11.sp
                 )
             }
@@ -995,8 +1002,9 @@ fun UpcomingHolidayBanner(
                 Text(
                     text = "41 ДН.",
                     color = Color(0xFF38BDF8),
+                    fontFamily = GoogleBodyFontFamily,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 )
             }
@@ -1037,6 +1045,7 @@ fun SavingsHeroCard(
                     Text(
                         text = "МОЯ СКАРБНИЧКА (SQLITE)",
                         color = palette.textSecondary,
+                        fontFamily = GoogleBodyFontFamily,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -1046,12 +1055,13 @@ fun SavingsHeroCard(
                         Text(
                             text = "$%,d".format(savedUsd),
                             color = palette.textPrimary,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.ExtraBold
+                            fontFamily = ToyStoryFontFamily,
+                            fontSize = 26.sp
                         )
                         Text(
                             text = " / $%,d".format(totalCostUsd),
                             color = palette.textSecondary,
+                            fontFamily = GoogleBodyFontFamily,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
@@ -1223,8 +1233,8 @@ fun EditorialWishCard(
                     Text(
                         text = wish.priceLabel,
                         color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        fontFamily = ToyStoryFontFamily,
+                        fontSize = 22.sp
                     )
 
                     if (canAfford) {
@@ -1235,6 +1245,7 @@ fun EditorialWishCard(
                             Text(
                                 text = "Бюджету вистачає ✓",
                                 color = Color.White,
+                                fontFamily = GoogleBodyFontFamily,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1251,14 +1262,15 @@ fun EditorialWishCard(
                 Text(
                     text = wish.title,
                     color = if (wish.isFulfilled) palette.textSecondary else palette.textPrimary,
+                    fontFamily = ToyStoryFontFamily,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
                     textDecoration = if (wish.isFulfilled) TextDecoration.LineThrough else TextDecoration.None
                 )
 
                 Text(
                     text = wish.description,
                     color = palette.textSecondary,
+                    fontFamily = GoogleBodyFontFamily,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
                     maxLines = 3,
